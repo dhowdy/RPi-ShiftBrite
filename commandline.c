@@ -21,7 +21,7 @@ typedef struct {
     If CYCLE, the listener displays a cycling pattern mostly for testing.
     If SOLID, the listener displays a solid grey image of level
     'constant_value'. */
-    enum { STDIN, CYCLE, SOLID, RED, GREEN, YELLOW } mode;
+    enum { STDIN, CYCLE, SOLID, RED, GREEN, YELLOW, BLUE, PURPLE, CYAN } mode;
     /* refresh: Refresh cycle delay, in microseconds.
     This is the time, in microseconds, to delay between refreshing the display
     (i.e. pushing a frame out over SPI). If mode=STDIN, then this delay only
@@ -41,7 +41,10 @@ typedef struct {
     int constant_value;
     int constant_value_red;
     int constant_value_green;
+    int constant_value_blue;
     int constant_value_yellow;
+    int constant_value_purple;
+    int constant_value_cyan;
 } listener_options_t;
 
 void print_help(char * name);
@@ -57,10 +60,13 @@ int main(int argc, char *argv[]) {
     options.constant_value_red = -1;
     options.constant_value_green = -1;
     options.constant_value_yellow = -1;
+    options.constant_value_blue = -1;
+    options.constant_value_purple = -1;
+    options.constant_value_cyan = -1;
     options.refresh = 10000;
     options.mode = STDIN;
 
-    while((opt = getopt(argc, argv, "htc:R:G:Y:r:asvV")) != -1) {
+    while((opt = getopt(argc, argv, "htc:R:G:Y:B:P:C:r:asvV")) != -1) {
         switch(opt) {
         case 'h':
             print_help(argv[0]);
@@ -105,9 +111,51 @@ int main(int argc, char *argv[]) {
             }
             printf("Printing constant value %d\n", options.constant_value);
             break;
+        case 'B':
+            if (options.mode != STDIN) {
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C are exclusive\n\n");
+                print_help(argv[0]);
+                return -55;
+            }
+            options.mode = BLUE;
+            options.constant_value_blue = atoi(optarg);
+            if (options.constant_value_blue < 0 || options.constant_value_blue > 255) {
+                fprintf(stderr, "Error - Level must be value from 0 to 255.\n\n");
+                return -54;
+            }
+            printf("Printing constant value of blue %d\n", options.constant_value_blue);
+            break;
+        case 'P':
+            if (options.mode != STDIN) {
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C are exclusive\n\n");
+                print_help(argv[0]);
+                return -45;
+            }
+            options.mode = PURPLE;
+            options.constant_value_purple = atoi(optarg);
+            if (options.constant_value_purple < 0 || options.constant_value_purple > 255) {
+                fprintf(stderr, "Error - Level must be value from 0 to 255.\n\n");
+                return -44;
+            }
+            printf("Printing constant value of purple %d\n", options.constant_value_purple);
+            break;
+        case 'C':
+            if (options.mode != STDIN) {
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C are exclusive\n\n");
+                print_help(argv[0]);
+                return -35;
+            }
+            options.mode = CYAN;
+            options.constant_value_cyan = atoi(optarg);
+            if (options.constant_value_cyan < 0 || options.constant_value_cyan > 255) {
+                fprintf(stderr, "Error - Level must be value from 0 to 255.\n\n");
+                return -34;
+            }
+            printf("Printing constant value of cyan %d\n", options.constant_value_cyan);
+            break;
 	case 'R':
             if (options.mode != STDIN) {
-                fprintf(stderr, "Error - Options -t -c -R -G and -Y are exclusive\n\n");
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C are exclusive\n\n");
                 print_help(argv[0]);
                 return -25;
             }
@@ -121,7 +169,7 @@ int main(int argc, char *argv[]) {
             break;	
 	case 'G':
             if (options.mode != STDIN) {
-                fprintf(stderr, "Error - Options -t -c -R -G and -Y are exclusive\n\n");
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C are exclusive\n\n");
 		print_help(argv[0]);
                 return -23;
             }
@@ -135,7 +183,7 @@ int main(int argc, char *argv[]) {
             break;
 	case 'Y':
             if (options.mode != STDIN) {
-                fprintf(stderr, "Error - Options -t -c -R -G and -Y are exclusive\n\n");
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C are exclusive\n\n");
                 print_help(argv[0]);
                 return -20;
             }
@@ -178,7 +226,12 @@ void print_help(char * name) {
     printf("  -V: Really verbosely echo for each frame\n");
     printf("  -r: Set the refresh period to 'r' microseconds (default 10000)\n");
     printf("\n");
-	printf("  -R: Set to constant color Red\n");
+    printf("  -R: Set to constant color Red\n");
+    printf("  -G: Set to constant color Green\n");
+    printf("  -B: Set to constant color Blue\n");
+    printf("  -P: Set to constant color Purple\n");
+    printf("  -Y: Set to constant color Yellow\n");
+    printf("  -C: Set to constant color Cyan\n");
     printf("\n");
     printf("The following only matter if listening on stdin (i.e. not -t not -c)\n");
     printf("  -a: Use async mode (push frames whether more are read via stdin or not )\n");
@@ -254,13 +307,28 @@ int run_display(listener_options_t * opt) {
                 img[1] = opt->constant_value_green;
 		shiftbrite_refresh();
                 return 0;
+        } else if (opt->mode == BLUE && opt->constant_value_blue >= 0) {
+                img[2] = opt->constant_value_blue;
+                shiftbrite_refresh();
+                return 0;
         } else if (opt->mode == YELLOW && opt->constant_value_yellow >= 0) {
                 img[1] = opt->constant_value_yellow;
 		img[0] = opt->constant_value_yellow;
-	//DMH -lots of trial and error to figure out how to turn on a specific led component.  
 		shiftbrite_refresh();
                 return 0;
-        } else {
+         } else if (opt->mode == PURPLE && opt->constant_value_purple >= 0) {
+                img[2] = opt->constant_value_purple;
+                img[0] = opt->constant_value_purple;
+                shiftbrite_refresh();
+                return 0;
+	 } else if (opt->mode == CYAN && opt->constant_value_cyan >= 0) {
+                img[2] = opt->constant_value_cyan;
+                img[1] = opt->constant_value_cyan;
+                shiftbrite_refresh();
+                return 0;
+    
+// DMH LOTS of fucking hacking and trial and error but I got it figured out.
+	} else {
             int r = read(0, buf, BUFSIZE);
             if (r != EAGAIN && r != EWOULDBLOCK && r != -1) {
                 if (opt->verbose >= 2) {
