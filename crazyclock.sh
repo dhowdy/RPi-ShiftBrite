@@ -12,5 +12,7 @@ do
    sleep 1
    /usr/local/bin/clock -C 255
    sleep 1
+   /usr/local/bin/clock -p
+   sleep 1
 
 done
