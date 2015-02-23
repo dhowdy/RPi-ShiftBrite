@@ -21,7 +21,7 @@ typedef struct {
     If CYCLE, the listener displays a cycling pattern mostly for testing.
     If SOLID, the listener displays a solid grey image of level
     'constant_value'. */
-    enum { STDIN, CYCLE, SOLID, RED, GREEN, YELLOW, BLUE, PURPLE, CYAN, PINK } mode;
+    enum { STDIN, CYCLE, SOLID, RED, GREEN, YELLOW, BLUE, PURPLE, CYAN, PINK, RGB } mode;
     /* refresh: Refresh cycle delay, in microseconds.
     This is the time, in microseconds, to delay between refreshing the display
     (i.e. pushing a frame out over SPI). If mode=STDIN, then this delay only
@@ -45,6 +45,10 @@ typedef struct {
     int constant_value_yellow;
     int constant_value_purple;
     int constant_value_cyan;
+    int constant_r;
+    int constant_g;
+    int constant_b;
+
 } listener_options_t;
 
 void print_help(char * name);
@@ -63,10 +67,12 @@ int main(int argc, char *argv[]) {
     options.constant_value_blue = -1;
     options.constant_value_purple = -1;
     options.constant_value_cyan = -1;
+    options.constant_r = 0;
+    options.constant_g = 0;
+    options.constant_b = 0;
     options.refresh = 10000;
     options.mode = STDIN;
-
-    while((opt = getopt(argc, argv, "htc:R:G:Y:B:P:C:r:pasvV")) != -1) {
+    while((opt = getopt(argc, argv, "htc:R:G:Y:B:P:C:r:F:pasvV")) != -1) {
         switch(opt) {
         case 'h':
             print_help(argv[0]);
@@ -113,7 +119,7 @@ int main(int argc, char *argv[]) {
             break;
         case 'B':
             if (options.mode != STDIN) {
-                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p are exclusive\n\n");
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p -F are exclusive\n\n");
                 print_help(argv[0]);
                 return -55;
             }
@@ -127,7 +133,7 @@ int main(int argc, char *argv[]) {
             break;
         case 'P':
             if (options.mode != STDIN) {
-                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p are exclusive\n\n");
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p -F are exclusive\n\n");
                 print_help(argv[0]);
                 return -45;
             }
@@ -141,7 +147,7 @@ int main(int argc, char *argv[]) {
             break;
         case 'C':
             if (options.mode != STDIN) {
-                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p are exclusive\n\n");
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p -F are exclusive\n\n");
                 print_help(argv[0]);
                 return -35;
             }
@@ -155,7 +161,7 @@ int main(int argc, char *argv[]) {
             break;
 	case 'R':
             if (options.mode != STDIN) {
-                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p are exclusive\n\n");
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p -F are exclusive\n\n");
                 print_help(argv[0]);
                 return -25;
             }
@@ -169,7 +175,7 @@ int main(int argc, char *argv[]) {
             break;	
 	case 'G':
             if (options.mode != STDIN) {
-                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p are exclusive\n\n");
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p -F are exclusive\n\n");
 		print_help(argv[0]);
                 return -23;
             }
@@ -183,7 +189,7 @@ int main(int argc, char *argv[]) {
             break;
 	case 'Y':
             if (options.mode != STDIN) {
-                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p are exclusive\n\n");
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p -F are exclusive\n\n");
                 print_help(argv[0]);
                 return -20;
             }
@@ -197,12 +203,26 @@ int main(int argc, char *argv[]) {
             break;
         case 'p':
             if (options.mode != STDIN) {
-                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p are exclusive\n\n");
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p -F are exclusive\n\n");
                 print_help(argv[0]);
                 return -20;
             }
             options.mode = PINK;
             printf("Printing constant value of pink.\n");
+            break;
+        case 'F':
+            if (options.mode != STDIN) {
+                fprintf(stderr, "Error - Options -t -c -R -G -Y -B -P -C -p -F are exclusive\n\n");
+                print_help(argv[0]);
+                return -20;
+            }
+	    if (sscanf(optarg, "%u,%u,%u", &options.constant_r, &options.constant_g, &options.constant_b) != 3) {
+               fprintf(stderr, "Failed to parse color RGB.\n");
+               return -40;
+            }
+
+            options.mode = RGB;
+            printf("Printing constant value of %d,%d,%d.\n", options.constant_r, options.constant_g, options.constant_b);
             break;
         case 'r':
             options.refresh = atoi(optarg);
@@ -342,7 +362,13 @@ int run_display(listener_options_t * opt) {
 		img[0] = 255;
                 shiftbrite_refresh();
                 return 0;
-    
+          } else if (opt->mode == RGB) {
+                img[0] = opt->constant_r;
+                img[1] = opt->constant_g;
+                img[2] = opt->constant_b;
+                shiftbrite_refresh();
+                return 0;
+   
 // DMH LOTS of fucking hacking and trial and error but I got it figured out.
 	} else {
             int r = read(0, buf, BUFSIZE);
